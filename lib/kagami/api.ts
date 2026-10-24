@@ -1,4 +1,4 @@
-import { config } from "../config";
+import { apiRequestUrl, config } from "../config";
 import {
   capabilitiesSchema,
   graphSchema,
@@ -27,7 +27,7 @@ async function request(path: string, signal: AbortSignal, body?: unknown) {
   const timeout = AbortSignal.timeout(config.timeout);
   try {
     const response = await fetch(
-      `${config.apiUrl.replace(/\/$/, "")}${kagamiApiConfig.base}${path}`,
+      apiRequestUrl(`${kagamiApiConfig.base}${path}`),
       {
         method: body ? "POST" : "GET",
         headers: body ? { "Content-Type": "application/json" } : undefined,

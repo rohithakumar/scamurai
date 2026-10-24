@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { config } from "../config";
+import { API_PROXY_PREFIX, apiRequestUrl, config } from "../config";
 import type {
   Investigation,
   InvestigationCapabilities,
@@ -218,7 +218,13 @@ function imageUrl(value: string, demo: boolean) {
   if (demo && /^\/yokai\/[a-z-]+\.svg$/.test(value)) return value;
   let url: URL;
   try {
-    url = new URL(value, config.apiUrl);
+    // A saved production result may already contain a proxied screenshot URL.
+    const location =
+      process.env.NODE_ENV === "production" &&
+      value.startsWith(`${API_PROXY_PREFIX}/`)
+        ? value.slice(API_PROXY_PREFIX.length)
+        : value;
+    url = new URL(location, config.apiUrl);
   } catch {
     throw new YokaiApiError(
       "The evidence service returned an invalid screenshot location.",
@@ -231,7 +237,9 @@ function imageUrl(value: string, demo: boolean) {
     throw new YokaiApiError(
       "A screenshot location is not supported by the evidence service.",
     );
-  return url.href;
+  return process.env.NODE_ENV === "production"
+    ? apiRequestUrl(url.pathname + url.search)
+    : url.href;
 }
 export function validateInvestigation(
   value: unknown,
@@ -271,7 +279,7 @@ async function request(
     );
   const timeout = AbortSignal.timeout(config.timeout);
   try {
-    const response = await fetch(`${config.apiUrl.replace(/\/$/, "")}${path}`, {
+    const response = await fetch(apiRequestUrl(path), {
       method,
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,

@@ -16,18 +16,54 @@ const input = {
     includeNetwork: true,
   },
 };
+test("production screenshots stay on the frontend origin and survive session validation", () => {
+  const previousMode = process.env.NODE_ENV;
+  process.env.NODE_ENV = "production";
+  try {
+    const fixture = createDemoInvestigation("payment", input);
+    fixture.demo = false;
+    fixture.result.captures.forEach((capture) => {
+      capture.screenshot = {
+        kind: "capture",
+        url: `/api/v1/kage/investigations/test/screenshots/${capture.id}.png`,
+      };
+    });
+    const parsed = api.validateInvestigation(fixture, true);
+    assert.match(
+      parsed.result.captures[0].screenshot.url,
+      /^\/api\/service\/api\/v1\//,
+    );
+    const restored = api.validateInvestigation(parsed, true);
+    assert.equal(
+      restored.result.captures[0].screenshot.url,
+      parsed.result.captures[0].screenshot.url,
+    );
+    fixture.result.captures[0].screenshot.url =
+      "https://untrusted.example/image.png";
+    assert.throws(() => api.validateInvestigation(fixture, true));
+  } finally {
+    if (previousMode === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousMode;
+  }
+});
 test("live review metadata survives validation without changing legacy fixtures", () => {
   const fixture = createDemoInvestigation("payment", input);
   fixture.result.findings[0].severity = "high";
   fixture.result.findings[0].confidence =
     "Observed form structure only; intent is unknown.";
-  fixture.result.captures[0].structure.textBlocks = ["Simulated deposit; no real payments"];
+  fixture.result.captures[0].structure.textBlocks = [
+    "Simulated deposit; no real payments",
+  ];
   fixture.result.captures[0].structure.actionLabels = ["Continue demo"];
   const result = api.validateInvestigation(fixture).result;
   assert.equal(result.findings[0].severity, "high");
   assert.match(result.findings[0].confidence, /intent is unknown/);
-  assert.deepEqual(result.captures[0].structure.textBlocks, ["Simulated deposit; no real payments"]);
-  assert.deepEqual(result.captures[0].structure.actionLabels, ["Continue demo"]);
+  assert.deepEqual(result.captures[0].structure.textBlocks, [
+    "Simulated deposit; no real payments",
+  ]);
+  assert.deepEqual(result.captures[0].structure.actionLabels, [
+    "Continue demo",
+  ]);
 });
 test("three fixtures preserve distinct evidence and explicit valid relationships", () => {
   for (const scenario of ["responsive", "payment", "redirect"]) {

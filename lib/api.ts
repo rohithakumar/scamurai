@@ -1,4 +1,4 @@
-import { config } from "./config";
+import { apiRequestUrl, config } from "./config";
 import { mockAnalysis, mockRescue } from "./mock-data";
 import type {
   Analysis,
@@ -15,7 +15,7 @@ async function request(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), config.timeout);
   try {
-    const response = await fetch(`${config.apiUrl.replace(/\/$/, "")}${path}`, {
+    const response = await fetch(apiRequestUrl(path), {
       method: body ? "POST" : "GET",
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,

@@ -83,3 +83,30 @@ test("live API validates responses and never substitutes demo data on errors", a
   }
   await assert.rejects(api.analyze(input), /Cannot reach/);
 });
+
+test("production health uses the frontend origin instead of a direct Render request", async () => {
+  const api = require("../.api-check/api.js");
+  const { apiRequestUrl } = require("../.api-check/config.js");
+  const originalFetch = global.fetch;
+  const originalMode = process.env.NODE_ENV;
+  process.env.NODE_ENV = "production";
+  const calls = [];
+  global.fetch = async (url) => {
+    calls.push(url);
+    return Response.json({ service: "scamurai-backend", status: "ok" });
+  };
+  try {
+    assert.equal(await api.health(), true);
+    assert.deepEqual(calls, ["/api/service/health"]);
+    assert.equal(
+      apiRequestUrl("/api/v1/kage/capabilities"),
+      "/api/service/api/v1/kage/capabilities",
+    );
+    assert.throws(() => apiRequestUrl("//unexpected.example/health"));
+    assert.throws(() => apiRequestUrl("https://unexpected.example/health"));
+  } finally {
+    global.fetch = originalFetch;
+    if (originalMode === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalMode;
+  }
+});
