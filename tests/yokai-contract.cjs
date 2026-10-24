@@ -67,8 +67,9 @@ test("simple results preserve urgent warnings, test disclosures, and evidence re
   const result = summarizeEvidence(captures, [finding]);
   assert.match(result.points[0].detail, /phone visit/);
   assert.match(result.points[0].detail, /Simulated Deposit Interface/);
-  assert.match(result.disclosure, /Fictional Security Test Fixture/);
-  assert.match(result.disclosure, /not proof of safety/);
+  assert.match(result.disclosure, /says it was made for testing/);
+  assert.match(result.disclosure, /have not verified/);
+  assert.equal(result.disclosureEvidence, "Fictional Security Test Fixture");
   assert.deepEqual(result.points[0].evidenceIds, finding.evidenceIds);
   const urgent = summarizeEvidence(captures, [
     finding,

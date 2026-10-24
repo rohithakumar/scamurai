@@ -165,8 +165,11 @@ export function summarizeEvidence(
     warningCount: warnings.length ? grouped.size : 0,
     tone: incomplete ? "incomplete" : warnings.length ? "review" : "neutral",
     disclosure: testDisclosure
-      ? `The page says: “${testDisclosure.slice(0, 240)}” This is the page’s claim, not proof of safety.`
+      ? /fictional.{0,45}(?:test|fixture)/i.test(testDisclosure)
+        ? "This website says it was made for testing. We have not verified that claim."
+        : "This website says it does not take real payments. We have not verified that claim."
       : undefined,
+    disclosureEvidence: testDisclosure,
     limitation:
       "We only checked the pages that loaded during these visits. We did not click through every page, sign in, or test a payment.",
   };

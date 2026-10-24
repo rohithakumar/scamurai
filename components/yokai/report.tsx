@@ -94,6 +94,12 @@ export function InvestigationReport({
       <details className="yk-technical-details">
         <summary>Show detailed evidence</summary>
         <div className="yk-technical-body">
+          {summary.disclosureEvidence && (
+            <section>
+              <h3>Website notice, as recorded</h3>
+              <p className="yk-field-note">{summary.disclosureEvidence}</p>
+            </section>
+          )}
           <div className="yk-report-meta">
             <strong>{statusLabels[job.status]}</strong>
             <small>
