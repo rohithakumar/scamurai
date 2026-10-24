@@ -593,8 +593,12 @@
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
-.yk-difference-callout > span { min-width: 0; }
-.yk-difference-callout > svg { flex-shrink: 0; }
+.yk-difference-callout > span {
+  min-width: 0;
+}
+.yk-difference-callout > svg {
+  flex-shrink: 0;
+}
 .yk-difference-callout.tone-sensitive {
   background: #fff1eb;
   border-color: #e9c8b9;
@@ -2660,6 +2664,109 @@
   font-size: 24px;
   font-variant-numeric: tabular-nums;
   color: #2e3a25;
+}
+.yk-simple-address {
+  margin-top: 20px;
+}
+.yk-simple-address p {
+  margin: 10px 0 0;
+  color: #626e59;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.yk-summary-review,
+.yk-summary-incomplete {
+  background: #fcf8ee;
+  border-color: #e8d9b8;
+}
+.yk-summary-review h3,
+.yk-summary-incomplete h3 {
+  color: #624b23;
+}
+.yk-report .yk-evidence-summary h3 {
+  margin-top: 6px;
+  font-size: clamp(20px, 2.3vw, 28px);
+  line-height: 1.25;
+}
+.yk-report .yk-evidence-summary p {
+  font-size: 14px;
+  color: #515a4a;
+}
+.yk-report .yk-simple-findings {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.yk-report .yk-simple-findings li {
+  padding: 18px 0;
+  border-bottom: 1px solid #e4e7df;
+}
+.yk-simple-findings h4 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #283122;
+}
+.yk-report .yk-simple-findings p,
+.yk-simple-copy {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #55604d;
+}
+.yk-simple-disclosure {
+  font-size: 13px;
+  line-height: 1.75;
+  color: #626e59;
+  border-left: 3px solid #a4ad99;
+  padding: 8px 0 8px 14px;
+  margin: 22px 0;
+}
+.yk-simple-action {
+  padding: 22px;
+  margin-top: 26px;
+  border-radius: 14px;
+  background: #edf3e5;
+  border: 1px solid #d9e3cd;
+}
+.yk-report .yk-simple-action h3 {
+  margin: 8px 0;
+}
+.yk-simple-action p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.8;
+  color: #334129;
+}
+.yk-simple-limit {
+  font-size: 13px;
+  line-height: 1.75;
+  color: #626e59;
+  margin: 18px 0 26px;
+}
+.yk-technical-details {
+  border-block: 1px solid #dce3d4;
+  margin-bottom: 24px;
+}
+.yk-technical-details > summary {
+  padding: 18px 0;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.yk-technical-body {
+  padding-bottom: 18px;
+}
+.yk-technical-body .yk-report-meta {
+  margin-top: 4px;
+}
+.yk-technical-body .yk-report-meta small {
+  display: block;
+  margin-top: 8px;
+}
+.yk-technical-details > summary:focus-visible {
+  outline: 2px solid #627d48;
+  outline-offset: 4px;
 }
 @media (max-width: 760px) {
   .yk-evidence-summary {

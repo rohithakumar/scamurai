@@ -16,6 +16,70 @@ const input = {
     includeNetwork: true,
   },
 };
+
+test("simple results explain warnings without declaring a site safe or malicious", () => {
+  const {
+    summarizeEvidence,
+    simpleReportText,
+  } = require("../.yokai-check/yokai/plain-summary.js");
+  const responsive = createDemoInvestigation("responsive", input);
+  const normal = summarizeEvidence(
+    responsive.result.captures,
+    responsive.result.findings,
+  );
+  assert.match(normal.title, /No major warning found/);
+  assert.match(normal.description, /not a guarantee/);
+  const job = createDemoInvestigation("payment", input);
+  const payment = summarizeEvidence(job.result.captures, job.result.findings);
+  assert.match(payment.title, /Check this website/);
+  assert.match(payment.action, /Pause before paying/);
+  assert.equal(payment.warningCount, 1);
+  assert.equal(payment.points.length, 1);
+  const text = simpleReportText(job);
+  assert.match(text, /FICTIONAL DEMO/);
+  assert.match(text, /What you should do/);
+  assert.doesNotMatch(text, /HTTP 302|Review priority|Evidence:|is safe\./);
+  const partial = structuredClone(job.result.captures);
+  partial[0].availability = "partial";
+  const incomplete = summarizeEvidence(partial, []);
+  assert.match(incomplete.title, /couldn’t finish/);
+  assert.match(incomplete.description, /Only 1 of 2/);
+  assert.match(incomplete.action, /Try the check again/);
+  assert.doesNotMatch(incomplete.title, /No major warning/);
+});
+
+test("simple results preserve urgent warnings, test disclosures, and evidence references", () => {
+  const {
+    summarizeEvidence,
+  } = require("../.yokai-check/yokai/plain-summary.js");
+  const job = createDemoInvestigation("payment", input);
+  const captures = job.result.captures;
+  captures[1].structure.headings = ["Simulated Deposit Interface"];
+  captures[1].structure.textBlocks = ["Fictional Security Test Fixture"];
+  const finding = {
+    id: "content-mobile",
+    title: "Financial content differs",
+    explanation: "Original evidence.",
+    tone: "sensitive",
+    severity: "medium",
+    evidenceIds: captures.map((c) => c.id),
+  };
+  const result = summarizeEvidence(captures, [finding]);
+  assert.match(result.points[0].detail, /phone visit/);
+  assert.match(result.points[0].detail, /Simulated Deposit Interface/);
+  assert.match(result.disclosure, /Fictional Security Test Fixture/);
+  assert.match(result.disclosure, /not proof of safety/);
+  assert.deepEqual(result.points[0].evidenceIds, finding.evidenceIds);
+  const urgent = summarizeEvidence(captures, [
+    finding,
+    { ...finding, id: "secret-request", severity: "high" },
+  ]);
+  assert.match(urgent.action, /Do not enter your wallet recovery phrase/);
+  assert.match(urgent.title, /Pause/);
+  assert.match(urgent.points[0].title, /wallet recovery secrets/);
+  const empty = summarizeEvidence([], []);
+  assert.match(empty.title, /couldn’t finish/);
+});
 test("production screenshots stay on the frontend origin and survive session validation", () => {
   const previousMode = process.env.NODE_ENV;
   process.env.NODE_ENV = "production";

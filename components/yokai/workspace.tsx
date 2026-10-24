@@ -50,14 +50,12 @@ function revealView(view: View) {
         ? ".yk-launch-grid"
         : ".yk-result-view"
       : ".yk-navigation:not(.yk-navigation-mobile)";
-    document
-      .querySelector(selector)
-      ?.scrollIntoView({
-        block: "start",
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "instant"
-          : "smooth",
-      });
+    document.querySelector(selector)?.scrollIntoView({
+      block: "start",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+    });
   });
 }
 export function YokaiWorkspace({ initialId }: { initialId?: string }) {
@@ -88,9 +86,9 @@ export function YokaiWorkspace({ initialId }: { initialId?: string }) {
     : state.capabilities;
   useEffect(() => {
     if (state.job?.result) {
-      setView("compare");
+      setView("report");
       setDemoMode(state.job.demo);
-      revealView("compare");
+      revealView("report");
     }
   }, [state.job?.id, !!state.job?.result]);
   const showEvidence = (ids: string[], enlarge = false) =>
@@ -220,7 +218,7 @@ export function YokaiWorkspace({ initialId }: { initialId?: string }) {
           Opening investigation…
         </p>
       )}
-      {state.job && (!result || view === "report") && (
+      {state.job && !result && (
         <InvestigationProgress
           job={state.job}
           canCancel={!!state.capabilities?.cancellation}
@@ -236,7 +234,7 @@ export function YokaiWorkspace({ initialId }: { initialId?: string }) {
           history={state.history}
           onStart={(input, scenario) => state.start(input, scenario, demoMode)}
           onOpen={(id) => {
-            if (id === state.job?.id) setView("compare");
+            if (id === state.job?.id) setView("report");
             else state.open(id);
           }}
         />
