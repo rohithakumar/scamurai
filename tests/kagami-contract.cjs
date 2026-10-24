@@ -407,3 +407,91 @@ test("zero approval explains removal rather than new spending access", () => {
     /remove token-spending access/,
   );
 });
+
+test("rejected address checks identify the field and checksum without reflecting submitted data", async () => {
+  const savedFetch = global.fetch;
+  try {
+    global.fetch = async () =>
+      Response.json(
+        {
+          error: {
+            details: [
+              {
+                field: "body.target",
+                reason:
+                  "Value error, Mixed-case address has an invalid EIP-55 checksum.",
+              },
+            ],
+          },
+        },
+        { status: 422 },
+      );
+    await assert.rejects(
+      () =>
+        api.decodeTransaction(
+          mocks.demoTransaction("ethereum"),
+          new AbortController().signal,
+        ),
+      (e) =>
+        e.field === "target" && /Contract address:.*checksum/.test(e.message),
+    );
+    global.fetch = async () =>
+      Response.json(
+        {
+          error: {
+            details: [
+              {
+                field: "body.calldata",
+                reason: "sensitive raw data must never be reflected",
+              },
+            ],
+          },
+        },
+        { status: 422 },
+      );
+    await assert.rejects(
+      () =>
+        api.decodeTransaction(
+          mocks.demoTransaction("ethereum"),
+          new AbortController().signal,
+        ),
+      (e) =>
+        e.field === "calldata" &&
+        /complete request data/.test(e.message) &&
+        !/sensitive/.test(e.message),
+    );
+    global.fetch = async () =>
+      Response.json(
+        {
+          error: {
+            details: [{ field: "body.__proto__", reason: "sensitive" }],
+          },
+        },
+        { status: 422 },
+      );
+    await assert.rejects(
+      () =>
+        api.decodeTransaction(
+          mocks.demoTransaction("ethereum"),
+          new AbortController().signal,
+        ),
+      /Review the wallet address/,
+    );
+  } finally {
+    global.fetch = savedFetch;
+  }
+});
+
+test("the supplied USDC approval retains exact amount and spender in request data", () => {
+  const data = types.buildErc20Calldata(
+    "approve",
+    "0x000000000000000000000000000000000000dEaD",
+    "100000000",
+  );
+  assert.equal(
+    data,
+    "0x095ea7b3" +
+      "000000000000000000000000000000000000dead".padStart(64, "0") +
+      BigInt(100000000).toString(16).padStart(64, "0"),
+  );
+});

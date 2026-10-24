@@ -11,6 +11,7 @@ import {
   decodeTransaction,
   previewTransaction,
   validateTransaction,
+  KagamiApiError,
 } from "@/lib/kagami/api";
 import { createTransactionFixture, demoTransaction } from "@/lib/kagami/mocks";
 import { transactionInputSchema } from "@/lib/kagami/schemas";
@@ -120,10 +121,24 @@ export function FutureView({
       if (!controller.signal.aborted && current === version.current)
         setResult(value);
     } catch (e) {
-      if (!controller.signal.aborted)
+      if (!controller.signal.aborted) {
         setError(
           e instanceof Error ? e.message : "The transaction request failed.",
         );
+        if (e instanceof KagamiApiError && e.field) {
+          const fields: Record<string, string> = {
+            sender: "kg-sender",
+            target: "kg-target",
+            calldata: "kg-calldata",
+            valueWei: "kg-wei",
+            value_wei: "kg-wei",
+          };
+          const element = document.getElementById(fields[e.field]);
+          const details = element?.closest("details");
+          if (details) details.open = true;
+          element?.focus();
+        }
+      }
     } finally {
       if (!controller.signal.aborted) setBusy(false);
     }

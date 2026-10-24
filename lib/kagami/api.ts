@@ -18,7 +18,58 @@ export const kagamiApiConfig = {
   enabled: process.env.NEXT_PUBLIC_KAGAMI_API_ENABLED === "true",
   base: process.env.NEXT_PUBLIC_KAGAMI_API_PATH || "/api/v1/kagami",
 };
-export class KagamiApiError extends Error {}
+export class KagamiApiError extends Error {
+  constructor(
+    message: string,
+    public field?: string,
+  ) {
+    super(message);
+  }
+}
+
+async function inputError(response: Response) {
+  const labels: Record<string, string> = {
+    sender: "Your public wallet address",
+    target: "Contract address",
+    wallet: "Public wallet address",
+    token: "Token contract address",
+    spender: "Approved address",
+    network: "Network",
+    calldata: "Request data",
+    valueWei: "ETH amount",
+    value_wei: "ETH amount",
+    claimedPurpose: "What the app is promising",
+    claimed_purpose: "What the app is promising",
+  };
+  try {
+    const payload = await response.json();
+    const details = payload?.error?.details;
+    if (Array.isArray(details)) {
+      for (const item of details) {
+        if (typeof item?.field !== "string") continue;
+        const field = item.field.replace(/^body\./, "");
+        if (!Object.hasOwn(labels, field)) continue;
+        const checksum =
+          typeof item.reason === "string" && /checksum/i.test(item.reason);
+        const hint = checksum
+          ? "The upper- and lowercase letters do not match its address checksum. Copy the address again from your wallet or a trusted block explorer."
+          : field === "calldata"
+            ? "Copy the complete request data starting with 0x from your wallet."
+            : ["valueWei", "value_wei"].includes(field)
+              ? "Enter a whole number of wei, usually 0."
+              : field === "network"
+                ? "Choose a network offered by this service."
+                : ["claimedPurpose", "claimed_purpose"].includes(field)
+                  ? "Keep this description under 4,000 characters."
+                  : "Enter a complete public address starting with 0x, copied from a trusted source.";
+        return new KagamiApiError(`${labels[field]}: ${hint}`, field);
+      }
+    }
+  } catch {}
+  return new KagamiApiError(
+    "The request could not be checked. Review the wallet address, contract address, request data, and selected network.",
+  );
+}
 async function request(path: string, signal: AbortSignal, body?: unknown) {
   if (!kagamiApiConfig.enabled)
     throw new KagamiApiError(
@@ -36,6 +87,7 @@ async function request(path: string, signal: AbortSignal, body?: unknown) {
         cache: "no-store",
       },
     );
+    if (response.status === 422) throw await inputError(response);
     if (!response.ok)
       throw new KagamiApiError(
         response.status === 404
