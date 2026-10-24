@@ -27,6 +27,7 @@ import { PermissionDetails, PermissionDialog } from "./permission-details";
 import { BreakpointLab } from "./breakpoint-lab";
 import { ApprovalTimebomb } from "./approvals";
 import { FutureView } from "./futureview";
+import { WalletSummary } from "./wallet-summary";
 const AuthorityGraph = dynamic(() => import("./authority-graph"), {
   ssr: false,
   loading: () => (
@@ -38,23 +39,23 @@ const AuthorityGraph = dynamic(() => import("./authority-graph"), {
 const modules = [
   {
     id: "authority" as const,
-    label: "KUROKAGI",
-    short: "Authority",
-    description: "Map wallet permissions",
+    label: "Wallet overview",
+    short: "Overview",
+    description: "Who may use your tokens",
     Icon: Network,
   },
   {
     id: "approvals" as const,
-    label: "Approval Timebomb",
-    short: "Approvals",
-    description: "Review token allowances",
+    label: "Token access",
+    short: "Token access",
+    description: "Review spending permissions",
     Icon: Clock3,
   },
   {
     id: "futureview" as const,
-    label: "Wallet FutureView",
-    short: "FutureView",
-    description: "Inspect the next signature",
+    label: "Check a request",
+    short: "New request",
+    description: "Understand before you approve",
     Icon: Braces,
   },
 ];
@@ -72,6 +73,7 @@ export function KagamiWorkspace({
   const [removed, setRemoved] = useState<string[]>([]);
   const [selected, setSelected] = useState("wallet");
   const [detail, setDetail] = useState<string | null>(null);
+  const [showGraph, setShowGraph] = useState(false);
   const [tokenAddress, setTokenAddress] = useState("");
   const [spenderAddress, setSpenderAddress] = useState("");
   const analysis = state.analysis;
@@ -121,6 +123,7 @@ export function KagamiWorkspace({
     );
     if (!node) return;
     setDetail(null);
+    setShowGraph(true);
     setSelected(node.id);
     navigate("authority");
   }
@@ -155,14 +158,13 @@ export function KagamiWorkspace({
     <div className="kg-workspace">
       <header className="kg-hero">
         <div>
-          <span className="kg-eyebrow">
-            SCAMURAI / WALLET AUTHORITY INTELLIGENCE
-          </span>
+          <span className="kg-eyebrow">SCAMURAI / UNDERSTAND YOUR WALLET</span>
           <h1>
-            KAGAMI<span>Know the power behind the permission.</span>
+            KAGAMI<span>Know what your wallet allows.</span>
           </h1>
           <p>
-            Reveal hidden wallet authority. Understand transaction consequences.
+            See who may spend your tokens and understand a new request before
+            you approve it.
           </p>
         </div>
         <div className="kg-hero-symbol" aria-hidden="true">
@@ -176,15 +178,15 @@ export function KagamiWorkspace({
       <div className="kg-workspace-status">
         <span>
           <i />
-          {state.demo ? "Fictional demo" : "Connected service"}
+          {state.demo ? "Fictional demo" : "Live blockchain data"}
         </span>
         <p>
           {state.demo
-            ? "Authored fixtures · No blockchain queries"
-            : "Public-address analysis · No signing required"}
+            ? "Made-up examples · No live wallet checks"
+            : "Only your public address · No wallet login or signature"}
         </p>
         <button className="kg-secondary" onClick={state.changeDemo}>
-          {state.demo ? "Use connected service" : "Explore demo fixtures"}
+          {state.demo ? "Use connected service" : "Try a simple example"}
           <ArrowUpRight size={14} />
         </button>
       </div>
@@ -192,7 +194,7 @@ export function KagamiWorkspace({
         <div className="kg-panel-heading">
           <div>
             <span className="kg-eyebrow">START WITH A PUBLIC ADDRESS</span>
-            <h2>Whose authority are we looking at?</h2>
+            <h2>Check a wallet’s permissions.</h2>
           </div>
           <Wallet size={23} />
         </div>
@@ -213,7 +215,7 @@ export function KagamiWorkspace({
                 aria-invalid={!!state.wallet && !isAddress(state.wallet)}
                 value={state.wallet}
                 onChange={(e) => state.changeWallet(e.target.value)}
-                placeholder="0x followed by 40 hexadecimal characters"
+                placeholder="Paste a public wallet address starting with 0x"
                 maxLength={42}
                 spellCheck={false}
                 required
@@ -254,7 +256,7 @@ export function KagamiWorkspace({
               ) : (
                 <ArrowRight size={16} />
               )}{" "}
-              {state.busy ? "Requesting analysis…" : "Analyze wallet"}
+              {state.busy ? "Checking wallet…" : "Check wallet"}
             </button>
           </div>
           <div className="kg-wallet-foot">
@@ -266,7 +268,7 @@ export function KagamiWorkspace({
             <p>
               {state.demo
                 ? "A fixed fictional wallet keeps demo permissions separate from real addresses."
-                : "Address format is checked locally; mixed-case checksums are not verified."}
+                : "Use only a public address. Never enter a recovery phrase or private key. This check cannot move your money."}
             </p>
             {state.demo && (
               <button
@@ -289,11 +291,11 @@ export function KagamiWorkspace({
           </div>
           {!state.demo && (
             <details className="kg-specific-allowance">
-              <summary>Check a specific token allowance</summary>
+              <summary>Check one token and approved address (optional)</summary>
               <p className="kg-note">
-                Know the token and spender? Verify their current allowance
-                directly, even when history indexing is incomplete. This creates
-                no approval.
+                If a permission is missing from the list, check its token and
+                approved address directly. This reads the current spending
+                limit; it does not grant access.
               </p>
               <div className="kg-specific-fields">
                 <label>
@@ -309,7 +311,7 @@ export function KagamiWorkspace({
                   />
                 </label>
                 <label>
-                  Spender address
+                  Approved address (app or wallet)
                   <input
                     aria-label="Allowance spender address"
                     value={spenderAddress}
@@ -333,7 +335,7 @@ export function KagamiWorkspace({
                     });
                 }}
               >
-                Check allowance <ArrowRight size={15} />
+                Check spending access <ArrowRight size={15} />
               </button>
             </details>
           )}
@@ -356,10 +358,9 @@ export function KagamiWorkspace({
           )}
           {state.capabilities?.available && !capability?.walletAnalysis && (
             <p className="kg-notice">
-              The service has no wallet data connection for{" "}
-              {networks.find((n) => n.id === state.network)?.label}. Your
-              address can still be entered. Choose a connected network or retry
-              after its connection is configured.
+              {networks.find((n) => n.id === state.network)?.label} is not
+              connected yet. Your address is kept. Choose a connected network or
+              retry the connection.
             </p>
           )}
         </form>
@@ -381,11 +382,17 @@ export function KagamiWorkspace({
           <>
             <div className="kg-analysis-context">
               <div>
-                <span className={`kg-badge status-${analysis.status}`}>
-                  {analysis.status}
+                <span
+                  className={`kg-badge status-${analysis.status === "partial" ? "Limited check" : analysis.status === "completed" ? "Check finished" : analysis.status}`}
+                >
+                  {analysis.status === "partial"
+                    ? "Limited check"
+                    : analysis.status === "completed"
+                      ? "Check finished"
+                      : analysis.status}
                 </span>
                 <span className="kg-badge">
-                  {analysis.demo ? "FICTIONAL FIXTURE" : "SERVICE EVIDENCE"}
+                  {analysis.demo ? "DEMO EXAMPLE" : "LIVE DATA"}
                 </span>
                 <strong>
                   {networks.find((n) => n.id === analysis.network)?.label}
@@ -398,9 +405,8 @@ export function KagamiWorkspace({
               />
               <p className="kg-note">
                 Recorded {new Date(analysis.checkedAt).toLocaleString()}
-                {analysis.demo ? " · Fixture timestamp" : ""} · Approval
-                coverage: {analysis.coverage.approvals} · Delegation coverage:{" "}
-                {analysis.coverage.delegations}
+                {analysis.demo ? " · Example data" : ""}. This is a limited
+                check; other permissions may be missing.
               </p>
               {analysis.error && <p className="kg-error">{analysis.error}</p>}
             </div>
@@ -416,7 +422,9 @@ export function KagamiWorkspace({
             ) : analysis.status === "failed" ||
               analysis.status === "unsupported" ? (
               <section className="kg-panel">
-                <EmptyPanel title={`Wallet analysis ${analysis.status}.`}>
+                <EmptyPanel
+                  title="We could not complete this wallet check."
+                >
                   {analysis.error ||
                     "The service did not return a completed analysis for this target."}
                 </EmptyPanel>
@@ -429,60 +437,83 @@ export function KagamiWorkspace({
               />
             ) : (
               <>
-                <div className="kg-authority-layout">
-                  <AuthorityGraph
-                    analysis={analysis}
-                    removed={removed}
-                    selected={selected}
-                    onSelect={setSelected}
-                  />
-                  <aside className="kg-panel kg-authority-detail">
-                    {permission ? (
-                      <PermissionDetails
-                        permission={permission}
-                        analysis={analysis}
-                        removed={removed.includes(permission.id)}
-                        onToggle={toggle}
-                        onGraph={graphPermission}
-                      />
-                    ) : (
-                      <>
-                        <span className="kg-eyebrow">SELECTED OBSERVATION</span>
-                        <h3>{currentNode?.label || "Investigated wallet"}</h3>
-                        {currentNode?.address && (
-                          <AddressValue
-                            value={currentNode.address}
-                            network={analysis.network}
-                            demo={analysis.demo}
-                          />
-                        )}
-                        <p className="kg-note">
-                          Select a permission node or graph relationship to
-                          inspect its exact allowance, implementation address,
-                          and supporting evidence.
-                        </p>
-                        <div className="kg-wallet-model-count">
-                          <strong>{summary?.remaining ?? 0}</strong>
-                          <span>Active modeled paths remaining</span>
-                        </div>
-                        {analysis.findings.map((f) => (
-                          <p className="kg-notice" key={f}>
-                            {f}
-                          </p>
-                        ))}
-                      </>
-                    )}
-                  </aside>
-                </div>
-                <BreakpointLab
+                <WalletSummary
                   analysis={analysis}
-                  removed={removed}
-                  onToggle={toggle}
-                  onReset={() => setRemoved([])}
+                  onDetails={setDetail}
+                  onAll={() => navigate("approvals")}
                 />
+                <details
+                  className="kg-advanced"
+                  open={showGraph}
+                  onToggle={(e) => setShowGraph(e.currentTarget.open)}
+                >
+                  <summary>
+                    Explore the permission map and test changes (advanced)
+                  </summary>
+                  {showGraph && (
+                    <>
+                      <div className="kg-authority-layout">
+                        <AuthorityGraph
+                          analysis={analysis}
+                          removed={removed}
+                          selected={selected}
+                          onSelect={setSelected}
+                        />
+                        <aside className="kg-panel kg-authority-detail">
+                          {permission ? (
+                            <PermissionDetails
+                              permission={permission}
+                              analysis={analysis}
+                              removed={removed.includes(permission.id)}
+                              onToggle={toggle}
+                              onGraph={graphPermission}
+                            />
+                          ) : (
+                            <>
+                              <span className="kg-eyebrow">
+                                SELECTED OBSERVATION
+                              </span>
+                              <h3>
+                                {currentNode?.label || "Investigated wallet"}
+                              </h3>
+                              {currentNode?.address && (
+                                <AddressValue
+                                  value={currentNode.address}
+                                  network={analysis.network}
+                                  demo={analysis.demo}
+                                />
+                              )}
+                              <p className="kg-note">
+                                Select a permission node or graph relationship
+                                to inspect its exact allowance, implementation
+                                address, and supporting evidence.
+                              </p>
+                              <div className="kg-wallet-model-count">
+                                <strong>{summary?.remaining ?? 0}</strong>
+                                <span>Active modeled paths remaining</span>
+                              </div>
+                              {analysis.findings.map((f) => (
+                                <p className="kg-notice" key={f}>
+                                  {f}
+                                </p>
+                              ))}
+                            </>
+                          )}
+                        </aside>
+                      </div>
+                      <BreakpointLab
+                        analysis={analysis}
+                        removed={removed}
+                        onToggle={toggle}
+                        onReset={() => setRemoved([])}
+                      />
+                    </>
+                  )}
+                </details>
               </>
             )}
-            <section className="kg-panel kg-limitations">
+            <details className="kg-panel kg-limitations kg-advanced">
+              <summary>What this check could not cover</summary>
               <div className="kg-panel-heading">
                 <h3>Coverage & limitations</h3>
                 <Info size={18} />
@@ -492,33 +523,36 @@ export function KagamiWorkspace({
                   <li key={text}>{text}</li>
                 ))}
               </ul>
-            </section>
+            </details>
           </>
         ) : (
           <section className="kg-panel kg-get-started">
             <EmptyPanel
               title={
                 module === "authority"
-                  ? "See the authority behind the address."
-                  : "An inventory of existing permissions."
+                  ? "Start with a public wallet address."
+                  : "See who can spend your tokens."
               }
             >
               {module === "authority"
-                ? "Analyze a supported public wallet to map returned approvals and execution delegations, then follow each relationship back to its evidence."
-                : "Analyze a wallet to review finite, unlimited, and zero token allowances. No permissions are changed."}
+                ? "Paste the wallet address above and choose Check wallet. We will explain the permissions we can find, in everyday language."
+                : "Check a wallet to review its saved spending permissions. This does not change anything in the wallet."}
             </EmptyPanel>
             <div className="kg-start-columns">
               <div>
                 <Network size={20} />
-                <strong>Trace each relationship</strong>
-                <p>Inspect owners, spenders, tokens, and supplied evidence.</p>
+                <strong>Understand the permission</strong>
+                <p>
+                  See which token an address may use, and whether a spending
+                  limit is set.
+                </p>
               </div>
               <div>
                 <Clock3 size={20} />
-                <strong>Question the scope</strong>
+                <strong>Know the limits</strong>
                 <p>
-                  Review what is still authorized and the limits of the
-                  analysis.
+                  Some permissions may be missing. A clean result does not prove
+                  the wallet is safe.
                 </p>
               </div>
             </div>
@@ -526,9 +560,9 @@ export function KagamiWorkspace({
         )}
       </div>
       <footer className="kg-footer">
-        <span>READ-ONLY INVESTIGATION / SCAMURAI</span>
+        <span>NO SIGNING. NO MONEY MOVED. / SCAMURAI</span>
         <Link href="/dashboard/kagami/inspect">
-          Previous calldata inspector <ArrowUpRight size={12} />
+          Advanced request inspector <ArrowUpRight size={12} />
         </Link>
       </footer>
       {selectedPermission && analysis && (

@@ -6,10 +6,10 @@ const api = require("../.kagami-check/kagami/api.js");
 const mocks = require("../.kagami-check/kagami/mocks.js");
 const types = require("../.kagami-check/kagami/types.js");
 const schemas = require("../.kagami-check/kagami/schemas.js");
-test('specific allowance client verifies returned pair and wallet context', async () => {
+test("specific allowance client verifies returned pair and wallet context", async () => {
   const savedFetch = global.fetch;
   const report = liveWallet();
-  const permission = report.permissions.find(p => p.type === 'erc20');
+  const permission = report.permissions.find((p) => p.type === "erc20");
   try {
     global.fetch = async (url, options) => {
       assert.match(url, /wallets\/check-allowance$/);
@@ -17,10 +17,28 @@ test('specific allowance client verifies returned pair and wallet context', asyn
       assert.equal(body.token, permission.token);
       return Response.json(report);
     };
-    const result = await api.checkAllowance(report.wallet, report.network, permission.token, permission.spender, new AbortController().signal);
+    const result = await api.checkAllowance(
+      report.wallet,
+      report.network,
+      permission.token,
+      permission.spender,
+      new AbortController().signal,
+    );
     assert.equal(result.id, report.id);
-    await assert.rejects(() => api.checkAllowance(report.wallet, report.network, permission.token, '0x' + 'aa'.repeat(20), new AbortController().signal), /different allowance/);
-  } finally { global.fetch = savedFetch; }
+    await assert.rejects(
+      () =>
+        api.checkAllowance(
+          report.wallet,
+          report.network,
+          permission.token,
+          "0x" + "aa".repeat(20),
+          new AbortController().signal,
+        ),
+      /different allowance/,
+    );
+  } finally {
+    global.fetch = savedFetch;
+  }
 });
 test("unsigned calldata builder preserves exact integers and supports canonical ERC-20 operations", () => {
   const target = "0x" + "22".repeat(20),
@@ -299,5 +317,93 @@ test("session snapshot validates stored responses and explorer links are suppres
   assert.equal(
     types.explorerAddress("sepolia", mocks.demoWallet, false),
     `https://sepolia.etherscan.io/address/${mocks.demoWallet}`,
+  );
+});
+
+const plain = require("../.kagami-check/kagami/plain-summary.js");
+test("plain wallet results distinguish missing data from a clean check", () => {
+  const report = liveWallet();
+  const missing = plain.plainWallet({
+    ...report,
+    permissions: [],
+    coverage: { approvals: "unavailable", delegations: "unavailable" },
+  });
+  assert.match(missing.title, /could not complete/);
+  assert.match(missing.nextStep, /Do not treat missing results/);
+  const partial = plain.plainWallet({
+    ...report,
+    permissions: [],
+    coverage: { approvals: "partial", delegations: "partial" },
+  });
+  assert.match(partial.title, /data we checked/);
+  assert.match(partial.coverage, /Other permissions may be missing/);
+  assert.match(partial.nextStep, /cannot prove/);
+});
+test("plain permission wording preserves unlimited, zero, unknown-unit and delegation distinctions", () => {
+  const report = liveWallet();
+  assert.equal(
+    plain.plainPermission(report.permissions.find((p) => p.id === "unlimited"))
+      .amount,
+    "No set limit",
+  );
+  assert.match(
+    plain.plainPermission(report.permissions.find((p) => p.id === "unlimited"))
+      .meaning,
+    /does not prove/,
+  );
+  assert.equal(
+    plain.plainPermission(report.permissions.find((p) => p.id === "zero"))
+      .amount,
+    "No spending allowed",
+  );
+  assert.match(
+    plain.plainPermission(report.permissions.find((p) => p.id === "delegation"))
+      .meaning,
+    /did not check what the code can do/,
+  );
+  assert.match(
+    plain.plainPermission({
+      ...report.permissions.find((p) => p.id === "unlimited"),
+      allowanceKind: "finite",
+      decimals: null,
+    }).amount,
+    /unknown/,
+  );
+});
+test("plain request results do not turn decoding or absent effects into proof of successful changes", () => {
+  const result = {
+    ...liveTransaction(),
+    status: "successful",
+    functionName: "approve(address,uint256)",
+  };
+  assert.match(plain.plainTransaction(result, "decode").title, /asks to allow/);
+  assert.match(
+    plain.plainTransaction(result, "decode").meaning,
+    /does not test/,
+  );
+  assert.match(
+    plain.plainTransaction({ ...result, effects: [] }, "preview").title,
+    /could not confirm/,
+  );
+  assert.match(
+    plain.plainTransaction({ ...result, status: "reverted" }, "preview").title,
+    /failed in the test/,
+  );
+  assert.match(
+    plain.plainTransaction(result, "preview").action,
+    /No transaction was signed or sent/,
+  );
+});
+
+test("zero approval explains removal rather than new spending access", () => {
+  const result = {
+    ...liveTransaction(),
+    status: "successful",
+    functionName: "approve(address,uint256)",
+    parameters: [{ name: "amount (raw uint256)", value: "0" }],
+  };
+  assert.match(
+    plain.plainTransaction(result, "decode").title,
+    /remove token-spending access/,
   );
 });

@@ -48,12 +48,35 @@ export function useWallet() {
   }, []);
   useEffect(() => {
     const controller = new AbortController();
-    void getCapabilities(controller.signal)
-      .then(setCapabilities)
-      .catch((e) => {
-        if (!controller.signal.aborted) setError(e.message);
-      });
-    return () => controller.abort();
+    let pending = false;
+    const load = async () => {
+      if (pending || controller.signal.aborted) return;
+      pending = true;
+      try {
+        const value = await getCapabilities(controller.signal);
+        if (!controller.signal.aborted) setCapabilities(value);
+      } catch (e) {
+        if (!controller.signal.aborted)
+          setError(
+            e instanceof Error ? e.message : "Could not check the connection.",
+          );
+      } finally {
+        pending = false;
+      }
+    };
+    void load();
+    const refresh = () => {
+      void load();
+    };
+    window.addEventListener("focus", refresh);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") refresh();
+    }, 30000);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
   }, [retry]);
   const receive = useCallback((value: WalletAnalysis) => {
     setAnalysis(value);

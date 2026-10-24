@@ -1,12 +1,9 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Search } from "lucide-react";
-import {
-  formatAllowance,
-  networks,
-  type WalletAnalysis,
-} from "@/lib/kagami/types";
+import { networks, type WalletAnalysis } from "@/lib/kagami/types";
 import { CopyValue, EmptyPanel, SeverityBadge } from "./shared";
+import { plainPermission } from "@/lib/kagami/plain-summary";
 export function ApprovalTimebomb({
   analysis,
   onDetails,
@@ -44,31 +41,33 @@ export function ApprovalTimebomb({
       <header className="kg-panel-heading">
         <div>
           <span className="kg-eyebrow">
-            APPROVAL TIMEBOMB / PERMISSION INVENTORY
+            TOKEN ACCESS / SPENDING PERMISSIONS
           </span>
-          <h2>Permissions outlast the moment.</h2>
+          <h2>Who can spend your tokens?</h2>
         </div>
         <span className="kg-badge">
-          Coverage: {analysis.coverage.approvals}
+          {analysis.coverage.approvals === "complete"
+            ? "Records loaded"
+            : "Some records may be missing"}
         </span>
       </header>
       <p className="kg-note">
-        Review existing ERC-20 allowances. An unlimited allowance alone is not
-        evidence of a malicious spender.
+        These saved permissions may let an app or wallet spend a particular
+        token. No set limit does not automatically mean the address is harmful.
       </p>
       <div className="kg-model-summary">
         <div>
-          <span>Returned approvals</span>
+          <span>Spending records found</span>
           <strong>{approvals.length}</strong>
         </div>
         <div>
-          <span>Unlimited allowances</span>
+          <span>Without a set limit</span>
           <strong>
             {approvals.filter((p) => p.allowanceKind === "unlimited").length}
           </strong>
         </div>
         <div>
-          <span>Marked for review</span>
+          <span>Worth reviewing</span>
           <strong>
             {
               approvals.filter(
@@ -83,47 +82,50 @@ export function ApprovalTimebomb({
         {analysis.demo ? " · Fixture timestamp" : ""} ·{" "}
         {networks.find((n) => n.id === analysis.network)?.label}
       </p>
-      <div className="kg-approval-filters">
-        <label className="kg-filter-search">
-          <Search size={15} />
-          <input
-            aria-label="Filter token or spender"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Token or spender address"
-          />
-        </label>
-        <label>
-          Allowance type
-          <select value={kind} onChange={(e) => setKind(e.target.value)}>
-            <option value="all">All allowances</option>
-            <option value="finite">Finite</option>
-            <option value="unlimited">Unlimited</option>
-            <option value="zero">Zero</option>
-          </select>
-        </label>
-        <label>
-          Finding severity
-          <select
-            value={severity}
-            onChange={(e) => setSeverity(e.target.value)}
-          >
-            <option value="all">All findings</option>
-            <option value="none">No review finding</option>
-            <option value="review">Review recommended</option>
-            <option value="high">High priority</option>
-            <option value="unknown">Incomplete</option>
-          </select>
-        </label>
-        <label className="kg-check-label">
-          <input
-            type="checkbox"
-            checked={unlimited}
-            onChange={(e) => setUnlimited(e.target.checked)}
-          />{" "}
-          Unlimited only
-        </label>
-      </div>
+      <details className="kg-advanced">
+        <summary>Filter the spending records</summary>
+        <div className="kg-approval-filters">
+          <label className="kg-filter-search">
+            <Search size={15} />
+            <input
+              aria-label="Filter token or spender"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Token or spender address"
+            />
+          </label>
+          <label>
+            Spending limit
+            <select value={kind} onChange={(e) => setKind(e.target.value)}>
+              <option value="all">All limits</option>
+              <option value="finite">Limited</option>
+              <option value="unlimited">No set limit</option>
+              <option value="zero">No spending</option>
+            </select>
+          </label>
+          <label>
+            Finding severity
+            <select
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value)}
+            >
+              <option value="all">All findings</option>
+              <option value="none">No review finding</option>
+              <option value="review">Review recommended</option>
+              <option value="high">High priority</option>
+              <option value="unknown">Incomplete</option>
+            </select>
+          </label>
+          <label className="kg-check-label">
+            <input
+              type="checkbox"
+              checked={unlimited}
+              onChange={(e) => setUnlimited(e.target.checked)}
+            />{" "}
+            No set limit only
+          </label>
+        </div>
+      </details>
       <p className="kg-note" role="status">
         {filtered.length} of {approvals.length} returned approvals
       </p>
@@ -144,7 +146,7 @@ export function ApprovalTimebomb({
                 <span className="kg-badge">ERC-20 · {analysis.network}</span>
               </div>
               <div>
-                <span className="kg-eyebrow">SPENDER</span>
+                <span className="kg-eyebrow">APPROVED ADDRESS</span>
                 <CopyValue
                   value={p.spender}
                   label="Copy spender address"
@@ -154,12 +156,12 @@ export function ApprovalTimebomb({
                   className="kg-inline-link"
                   onClick={() => onDetails(p.id)}
                 >
-                  Evidence & details ↗
+                  What does this mean? ↗
                 </button>
               </div>
               <div className="kg-approval-amount">
-                <span className="kg-eyebrow">ALLOWANCE</span>
-                <strong>{formatAllowance(p)}</strong>
+                <span className="kg-eyebrow">SPENDING LIMIT</span>
+                <strong>{plainPermission(p).amount}</strong>
                 <SeverityBadge severity={p.severity} />
               </div>
               <button
@@ -177,12 +179,12 @@ export function ApprovalTimebomb({
           title={
             approvals.length
               ? "No approvals match these filters."
-              : "No approval records were returned."
+              : "No spending records were found in this check."
           }
         >
           {approvals.length
             ? "Change the filters to inspect other returned records."
-            : "This does not establish that the wallet has no permissions. Check the supplied coverage limitations."}
+            : "This does not prove the wallet has no permissions. Some records may be missing."}
         </EmptyPanel>
       )}
       {filtered.length > 25 && (

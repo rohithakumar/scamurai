@@ -23,6 +23,7 @@ import {
   type TransactionResult,
 } from "@/lib/kagami/types";
 import { CopyValue, EmptyPanel } from "./shared";
+import { TransactionSummary } from "./wallet-summary";
 export function FutureView({
   wallet,
   network,
@@ -133,15 +134,16 @@ export function FutureView({
         <header className="kg-panel-heading">
           <div>
             <span className="kg-eyebrow">
-              WALLET FUTUREVIEW / UNSIGNED INPUT
+              CHECK A REQUEST / NOTHING IS SIGNED
             </span>
             <h2>Before you sign.</h2>
           </div>
           <Braces size={24} />
         </header>
         <p className="kg-note">
-          Inspect a transaction's declared inputs. No wallet connection,
-          signature, or broadcast.
+          Copy the request details from your wallet’s confirmation screen. We
+          will explain supported requests without approving or sending them.
+          Never enter your recovery phrase.
         </p>
         {demo && (
           <div className="kg-examples">
@@ -165,7 +167,7 @@ export function FutureView({
           </label>
           <input id="kg-tx-network" value={networkLabel} readOnly />
           <label className="kg-label" htmlFor="kg-sender">
-            Sender address
+            Your public wallet address
           </label>
           <input
             id="kg-sender"
@@ -180,7 +182,7 @@ export function FutureView({
             required
           />
           <label className="kg-label" htmlFor="kg-target">
-            Target contract address
+            Contract address from the request
           </label>
           <input
             id="kg-target"
@@ -195,8 +197,13 @@ export function FutureView({
             required
           />
           <label className="kg-label" htmlFor="kg-calldata">
-            Transaction calldata
+            Request data (starts with 0x)
           </label>
+          <p className="kg-note">
+            In your wallet, open the request’s Details or Data section. Copy the
+            full data starting with 0x. If you cannot find it, ask the app for
+            the unsigned request.
+          </p>
           <textarea
             id="kg-calldata"
             value={calldata}
@@ -209,26 +216,28 @@ export function FutureView({
             maxLength={200000}
             required
           />
-          <label className="kg-label" htmlFor="kg-wei">
-            Native value (wei)
-          </label>
-          <input
-            id="kg-wei"
-            value={valueWei}
-            onChange={(e) => {
-              invalidate();
-              setValueWei(e.target.value);
-            }}
-            inputMode="numeric"
-            maxLength={78}
-            required
-          />
-          <p className="kg-note">
-            Exact integer units. 1 ETH = 1,000,000,000,000,000,000 wei.
-          </p>
+          <details className="kg-advanced">
+            <summary>ETH amount (advanced, usually 0)</summary>
+            <label className="kg-label" htmlFor="kg-wei">
+              Native value (wei)
+            </label>
+            <input
+              id="kg-wei"
+              value={valueWei}
+              onChange={(e) => {
+                invalidate();
+                setValueWei(e.target.value);
+              }}
+              inputMode="numeric"
+              maxLength={78}
+            />
+            <p className="kg-note">
+              Exact integer units. 1 ETH = 1,000,000,000,000,000,000 wei.
+            </p>
+          </details>
           {!demo && (
             <details className="kg-specific-allowance">
-              <summary>Build ERC-20 calldata</summary>
+              <summary>Build a test request (advanced)</summary>
               <p className="kg-note">
                 Prepare unsigned inputs for decoding or preview. Enter exact raw
                 token units; this does not send a transaction.
@@ -307,13 +316,13 @@ export function FutureView({
                   }
                 }}
               >
-                Use generated calldata
+                Use this request data
               </button>
             </details>
           )}
           <details className="kg-purpose" open={initialPurpose || undefined}>
             <summary>
-              Expected purpose <span>Optional</span>
+              What the app is promising <span>Optional</span>
             </summary>
             <label className="kg-label" htmlFor="kg-purpose">
               What do you expect this transaction to do?
@@ -348,7 +357,7 @@ export function FutureView({
               disabled={busy || !available?.decode}
               onClick={() => void run("decode")}
             >
-              <Braces size={15} /> Decode transaction
+              <Braces size={15} /> Explain request
             </button>
             <button
               className="kg-primary"
@@ -360,7 +369,7 @@ export function FutureView({
               ) : (
                 <Play size={15} />
               )}{" "}
-              {busy ? "Waiting for response…" : "Preview outcome"}
+              {busy ? "Waiting for response…" : "Test what could happen"}
             </button>
           </div>
           {busy && (
@@ -382,169 +391,175 @@ export function FutureView({
       <div className="kg-future-output">
         {result ? (
           <section className="kg-panel kg-outcome" aria-live="polite">
-            <header className="kg-panel-heading">
-              <div>
-                <span className="kg-eyebrow">
-                  {result.demo ? "FICTIONAL DEMO RESULT" : "SERVICE RESULT"}
-                </span>
-                <h2>
-                  {action === "decode" ? "Decoded action" : "Estimated outcome"}
-                </h2>
-              </div>
-              <span className={`kg-badge status-${result.status}`}>
-                {result.status}
-              </span>
-            </header>
-            <p className="kg-note">
-              {networkLabel} · {new Date(result.checkedAt).toLocaleString()}
-              {result.demo ? " · Fixture timestamp" : ""}
-            </p>
-            {result.error && <p className="kg-error">{result.error}</p>}
-            {result.status === "unsupported" ||
-            result.status === "failed" ||
-            result.status === "reverted" ? (
-              <div className="kg-result-status">
-                <h3>
-                  {result.status === "unsupported"
-                    ? "This transaction is not supported."
-                    : result.status === "reverted"
-                      ? "The service reports a revert."
-                      : "The request could not be analyzed."}
-                </h3>
-                <p>No completed outcome is displayed.</p>
-              </div>
-            ) : result.status === "pending" ? (
-              <p className="kg-notice">
-                The service returned a pending result. No completed simulation
-                evidence is available yet.
-              </p>
-            ) : (
-              <>
-                <h3>
-                  {result.functionName || "Function information unavailable"}
-                </h3>
-                <div className="kg-decoded-params">
-                  {result.parameters.map((p, i) => (
-                    <div key={`${p.name}-${i}`}>
-                      <span>{p.name}</span>
-                      <CopyValue value={p.value} label={`Copy ${p.name}`} />
-                    </div>
-                  ))}
+            <TransactionSummary result={result} action={action} />
+            <details className="kg-advanced">
+              <summary>Show exact request data and test evidence</summary>
+              <header className="kg-panel-heading">
+                <div>
+                  <span className="kg-eyebrow">
+                    {result.demo ? "FICTIONAL DEMO RESULT" : "SERVICE RESULT"}
+                  </span>
+                  <h2>
+                    {action === "decode"
+                      ? "Decoded action"
+                      : "Estimated outcome"}
+                  </h2>
                 </div>
-                {result.effects.length ? (
-                  <div className="kg-effects">
-                    {result.effects.map((effect) => (
-                      <article key={effect.id}>
-                        <span className="kg-eyebrow">
-                          {effect.kind.toUpperCase()} / {effect.asset}
-                        </span>
-                        <h3>{effect.label}</h3>
-                        <div className="kg-before-after">
-                          <div>
-                            <small>BEFORE</small>
-                            <strong>{effect.before ?? "Unavailable"}</strong>
-                          </div>
-                          <ArrowRight size={19} />
-                          <div>
-                            <small>ESTIMATED AFTER</small>
-                            <strong>{effect.after ?? "Unavailable"}</strong>
-                          </div>
-                        </div>
-                        <span className="kg-badge">
-                          {effect.direction === "permission"
-                            ? "Permission change · No transfer implied"
-                            : effect.direction}
-                        </span>
-                      </article>
+                <span className={`kg-badge status-${result.status}`}>
+                  {result.status}
+                </span>
+              </header>
+              <p className="kg-note">
+                {networkLabel} · {new Date(result.checkedAt).toLocaleString()}
+                {result.demo ? " · Fixture timestamp" : ""}
+              </p>
+              {result.error && <p className="kg-error">{result.error}</p>}
+              {result.status === "unsupported" ||
+              result.status === "failed" ||
+              result.status === "reverted" ? (
+                <div className="kg-result-status">
+                  <h3>
+                    {result.status === "unsupported"
+                      ? "This transaction is not supported."
+                      : result.status === "reverted"
+                        ? "The service reports a revert."
+                        : "The request could not be analyzed."}
+                  </h3>
+                  <p>No completed outcome is displayed.</p>
+                </div>
+              ) : result.status === "pending" ? (
+                <p className="kg-notice">
+                  The service returned a pending result. No completed simulation
+                  evidence is available yet.
+                </p>
+              ) : (
+                <>
+                  <h3>
+                    {result.functionName || "Function information unavailable"}
+                  </h3>
+                  <div className="kg-decoded-params">
+                    {result.parameters.map((p, i) => (
+                      <div key={`${p.name}-${i}`}>
+                        <span>{p.name}</span>
+                        <CopyValue value={p.value} label={`Copy ${p.name}`} />
+                      </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="kg-notice">
-                    {action === "decode"
-                      ? "Decoding describes the call. Run Preview outcome for supported modeled effects."
-                      : "No supported effect evidence was supplied. This is not a prediction of no impact."}
-                  </p>
-                )}
-                {(result.expectedAction || result.actualAction) && (
-                  <section className="kg-promise">
-                    <h3>Promise vs. reality</h3>
-                    <div>
-                      <span>Expected action</span>
-                      <p>{result.expectedAction || "No purpose supplied."}</p>
+                  {result.effects.length ? (
+                    <div className="kg-effects">
+                      {result.effects.map((effect) => (
+                        <article key={effect.id}>
+                          <span className="kg-eyebrow">
+                            {effect.kind.toUpperCase()} / {effect.asset}
+                          </span>
+                          <h3>{effect.label}</h3>
+                          <div className="kg-before-after">
+                            <div>
+                              <small>BEFORE</small>
+                              <strong>{effect.before ?? "Unavailable"}</strong>
+                            </div>
+                            <ArrowRight size={19} />
+                            <div>
+                              <small>ESTIMATED AFTER</small>
+                              <strong>{effect.after ?? "Unavailable"}</strong>
+                            </div>
+                          </div>
+                          <span className="kg-badge">
+                            {effect.direction === "permission"
+                              ? "Permission change · No transfer implied"
+                              : effect.direction}
+                          </span>
+                        </article>
+                      ))}
                     </div>
-                    <div>
-                      <span>Decoded or modeled action</span>
-                      <p>{result.actualAction || "Unavailable."}</p>
-                    </div>
-                    {result.mismatches.length ? (
-                      result.mismatches.map((m, i) => (
-                        <p className="kg-notice" key={i}>
-                          {m.finding}
+                  ) : (
+                    <p className="kg-notice">
+                      {action === "decode"
+                        ? "Decoding describes the call. Run Test what could happen for supported modeled effects."
+                        : "No supported effect evidence was supplied. This is not a prediction of no impact."}
+                    </p>
+                  )}
+                  {(result.expectedAction || result.actualAction) && (
+                    <section className="kg-promise">
+                      <h3>Promise vs. reality</h3>
+                      <div>
+                        <span>Expected action</span>
+                        <p>{result.expectedAction || "No purpose supplied."}</p>
+                      </div>
+                      <div>
+                        <span>Decoded or modeled action</span>
+                        <p>{result.actualAction || "Unavailable."}</p>
+                      </div>
+                      {result.mismatches.length ? (
+                        result.mismatches.map((m, i) => (
+                          <p className="kg-notice" key={i}>
+                            {m.finding}
+                          </p>
+                        ))
+                      ) : (
+                        <p className="kg-note">
+                          No contradiction finding was supplied. Review the
+                          decoded facts and limitations.
                         </p>
-                      ))
-                    ) : (
-                      <p className="kg-note">
-                        No contradiction finding was supplied. Review the
-                        decoded facts and limitations.
-                      </p>
-                    )}
-                  </section>
-                )}
-              </>
-            )}
-            <details className="kg-evidence">
-              <summary>Result evidence · {result.evidence.length}</summary>
-              {result.evidence.map((e) => (
-                <div key={e.id}>
-                  <strong>{e.label}</strong>
-                  <p>{e.reference}</p>
-                </div>
-              ))}
-            </details>
-            <div className="kg-limitations">
-              <h4>Analysis limitations</h4>
-              <ul>
-                {result.limitations.map((text) => (
-                  <li key={text}>{text}</li>
+                      )}
+                    </section>
+                  )}
+                </>
+              )}
+              <details className="kg-evidence">
+                <summary>Result evidence · {result.evidence.length}</summary>
+                {result.evidence.map((e) => (
+                  <div key={e.id}>
+                    <strong>{e.label}</strong>
+                    <p>{e.reference}</p>
+                  </div>
                 ))}
-              </ul>
-            </div>
+              </details>
+              <div className="kg-limitations">
+                <h4>Analysis limitations</h4>
+                <ul>
+                  {result.limitations.map((text) => (
+                    <li key={text}>{text}</li>
+                  ))}
+                </ul>
+              </div>
+            </details>
           </section>
         ) : (
           <section className="kg-panel">
-            <EmptyPanel title="An informed next signature.">
-              Load a labeled example or enter an unsigned transaction. The
-              result will explain supported permissions and effects, with its
-              evidence and limits.
+            <EmptyPanel title="Understand a request before approving it.">
+              Copy the contract address and request data from your wallet’s
+              transaction details. Check the explanation before you approve
+              anything in your wallet.
             </EmptyPanel>
             <div className="kg-output-guide">
               <div>
                 <span>01</span>
                 <p>
-                  <strong>Decode the request.</strong> Inspect the function and
-                  exact parameters.
+                  <strong>Read the request.</strong> Find out whether it asks to
+                  move tokens or grant spending access.
                 </p>
               </div>
               <div>
                 <span>02</span>
                 <p>
-                  <strong>Preview supported effects.</strong> Compare available
-                  before and estimated after data.
+                  <strong>Try a read-only test.</strong> See supported changes
+                  without sending money.
                 </p>
               </div>
               <div>
                 <span>03</span>
                 <p>
-                  <strong>Read the limitations.</strong> A preview cannot
-                  guarantee final execution.
+                  <strong>Keep the limits in mind.</strong> A test cannot
+                  guarantee the real outcome.
                 </p>
               </div>
             </div>
           </section>
         )}
         <p className="kg-estimate-note">
-          Simulation results are estimates and may differ from final blockchain
-          execution.
+          A test result is an estimate. Your wallet’s real transaction may
+          behave differently.
         </p>
       </div>
     </div>

@@ -8,6 +8,7 @@ import {
   type WalletAnalysis,
 } from "@/lib/kagami/types";
 import { AddressValue, CopyValue, SeverityBadge } from "./shared";
+import { plainPermission } from "@/lib/kagami/plain-summary";
 export function PermissionDetails({
   permission,
   analysis,
@@ -21,6 +22,7 @@ export function PermissionDetails({
   onToggle: (id: string) => void;
   onGraph: (id: string) => void;
 }) {
+  const plain = plainPermission(permission);
   const modeled = analysis.graph?.nodes.some(
     (n) => n.permissionId === permission.id,
   );
@@ -31,104 +33,114 @@ export function PermissionDetails({
           ? "TOKEN SPENDING AUTHORITY"
           : "EXECUTION AUTHORITY"}
       </span>
-      <h3>{permission.title}</h3>
+      <h3>{plain.title}</h3>
       <SeverityBadge severity={permission.severity} />
-      <p>{permission.explanation}</p>
-      <dl>
-        <div>
-          <dt>Owner</dt>
-          <dd>
-            <AddressValue
-              value={permission.owner}
-              network={analysis.network}
-              demo={analysis.demo}
-            />
-          </dd>
-        </div>
-        <div>
-          <dt>
-            {permission.type === "delegation" ? "Implementation" : "Spender"}
-          </dt>
-          <dd>
-            <AddressValue
-              value={permission.spender}
-              network={analysis.network}
-              demo={analysis.demo}
-            />
-          </dd>
-        </div>
-        {permission.token && (
+      <p>{plain.meaning}</p>
+      <details className="kg-advanced">
+        <summary>Show exact addresses and supporting evidence</summary>
+        <p>{permission.explanation}</p>
+        <dl>
           <div>
-            <dt>Token contract</dt>
+            <dt>Owner</dt>
             <dd>
               <AddressValue
-                value={permission.token}
+                value={permission.owner}
                 network={analysis.network}
                 demo={analysis.demo}
               />
             </dd>
           </div>
-        )}
-        <div>
-          <dt>Permission</dt>
-          <dd>{formatAllowance(permission)}</dd>
-        </div>
-        {permission.allowanceRaw !== null && (
           <div>
-            <dt>Exact raw allowance</dt>
+            <dt>
+              {permission.type === "delegation" ? "Implementation" : "Spender"}
+            </dt>
             <dd>
-              <CopyValue
-                value={permission.allowanceRaw}
-                label="Copy exact raw allowance"
+              <AddressValue
+                value={permission.spender}
+                network={analysis.network}
+                demo={analysis.demo}
               />
             </dd>
           </div>
-        )}
-        <div>
-          <dt>Recorded at</dt>
-          <dd>
-            {new Date(permission.checkedAt).toLocaleString()}
-            {analysis.demo && " · Fixture timestamp"}
-          </dd>
-        </div>
-      </dl>
-      <details open className="kg-evidence">
-        <summary>Supporting evidence · {permission.evidenceIds.length}</summary>
-        {analysis.evidence
-          .filter((e) => permission.evidenceIds.includes(e.id))
-          .map((e) => (
-            <div key={e.id}>
-              <span className="kg-badge">{e.source}</span>
-              <strong>{e.label}</strong>
-              <p>{e.reference}</p>
-              {e.transactionHash && (
-                <>
-                  <CopyValue
-                    value={e.transactionHash}
-                    label="Copy evidence transaction hash"
-                  />
-                  {!analysis.demo && (
-                    <a
-                      className="kg-inline-link"
-                      href={`${networks.find((n) => n.id === analysis.network)!.explorer}/tx/${e.transactionHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      View transaction evidence ↗
-                    </a>
-                  )}
-                </>
-              )}
+          {permission.token && (
+            <div>
+              <dt>Token contract</dt>
+              <dd>
+                <AddressValue
+                  value={permission.token}
+                  network={analysis.network}
+                  demo={analysis.demo}
+                />
+              </dd>
             </div>
-          ))}
+          )}
+          <div>
+            <dt>Permission</dt>
+            <dd>{formatAllowance(permission)}</dd>
+          </div>
+          {permission.allowanceRaw !== null && (
+            <div>
+              <dt>Exact raw allowance</dt>
+              <dd>
+                <CopyValue
+                  value={permission.allowanceRaw}
+                  label="Copy exact raw allowance"
+                />
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt>Recorded at</dt>
+            <dd>
+              {new Date(permission.checkedAt).toLocaleString()}
+              {analysis.demo && " · Fixture timestamp"}
+            </dd>
+          </div>
+        </dl>
+        <details open className="kg-evidence">
+          <summary>
+            Supporting evidence · {permission.evidenceIds.length}
+          </summary>
+          {analysis.evidence
+            .filter((e) => permission.evidenceIds.includes(e.id))
+            .map((e) => (
+              <div key={e.id}>
+                <span className="kg-badge">{e.source}</span>
+                <strong>{e.label}</strong>
+                <p>{e.reference}</p>
+                {e.transactionHash && (
+                  <>
+                    <CopyValue
+                      value={e.transactionHash}
+                      label="Copy evidence transaction hash"
+                    />
+                    {!analysis.demo && (
+                      <a
+                        className="kg-inline-link"
+                        href={`${networks.find((n) => n.id === analysis.network)!.explorer}/tx/${e.transactionHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        View transaction evidence ↗
+                      </a>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+        </details>
       </details>
+      <p className="kg-note">
+        Map changes below are previews only. They do not remove real wallet
+        permissions.
+      </p>
       <div className="kg-detail-actions">
         {modeled && (
           <button
             className="kg-secondary"
             onClick={() => onGraph(permission.id)}
           >
-            View in Authority Graph <ArrowUpRight size={14} />
+            Show in permission map <ArrowUpRight size={14} />
           </button>
         )}
         {permission.modelRemovable && permission.active && modeled ? (
@@ -137,7 +149,7 @@ export function PermissionDetails({
             onClick={() => onToggle(permission.id)}
           >
             {removed ? <RotateCcw size={14} /> : <Scissors size={14} />}{" "}
-            {removed ? "Restore modeled permission" : "Simulate removal"}
+            {removed ? "Restore in preview" : "Test removal in the map"}
           </button>
         ) : (
           <p className="kg-note">
@@ -180,7 +192,7 @@ export function PermissionDialog({
       }}
     >
       <header>
-        <span className="kg-eyebrow">PERMISSION INSPECTOR</span>
+        <span className="kg-eyebrow">PERMISSION DETAILS</span>
         <button
           className="kg-icon-button"
           aria-label="Close permission details"
