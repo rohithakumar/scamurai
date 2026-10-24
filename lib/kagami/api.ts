@@ -75,7 +75,9 @@ async function request(path: string, signal: AbortSignal, body?: unknown) {
     throw new KagamiApiError(
       "Wallet investigation is not available on this service yet. Explore labeled demo fixtures.",
     );
-  const timeout = AbortSignal.timeout(config.timeout);
+  const timeout = AbortSignal.timeout(
+    path === "/wallets/analyze" ? 40000 : config.timeout,
+  );
   try {
     const response = await fetch(
       apiRequestUrl(`${kagamiApiConfig.base}${path}`),

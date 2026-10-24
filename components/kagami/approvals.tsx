@@ -55,6 +55,13 @@ export function ApprovalTimebomb({
         These saved permissions may let an app or wallet spend a particular
         token. No set limit does not automatically mean the address is harmful.
       </p>
+      {analysis.coverage.approvals === "unavailable" && (
+        <p className="kg-notice" role="status">
+          We could not load or verify the wallet’s spending history. The list is
+          incomplete, not a confirmation that no permissions exist. Retry Check
+          wallet, or check a specific token and approved address above.
+        </p>
+      )}
       <div className="kg-model-summary">
         <div>
           <span>Spending records found</span>
@@ -179,7 +186,9 @@ export function ApprovalTimebomb({
           title={
             approvals.length
               ? "No approvals match these filters."
-              : "No spending records were found in this check."
+              : analysis.coverage.approvals === "unavailable"
+                ? "Spending history could not be checked."
+                : "No spending records were found in the history we checked."
           }
         >
           {approvals.length
