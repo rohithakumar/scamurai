@@ -400,7 +400,7 @@ test("zero approval explains removal rather than new spending access", () => {
     ...liveTransaction(),
     status: "successful",
     functionName: "approve(address,uint256)",
-    parameters: [{ name: "amount (raw uint256)", value: "0" }],
+    parameters: [{ name: "amountRaw", value: "0" }],
   };
   assert.match(
     plain.plainTransaction(result, "decode").title,

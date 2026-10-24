@@ -97,7 +97,7 @@ export function plainTransaction(
   const zeroApproval =
     method === "approve" &&
     result.parameters.some(
-      (p) => /^amount(?:\s|$)/.test(p.name) && p.value === "0",
+      (p) => /^amount(?:Raw|\s|$)/.test(p.name) && p.value === "0",
     );
   const title = failed
     ? result.status === "reverted"

@@ -15,10 +15,10 @@ export function TransactionSummary({
   const summary = plainTransaction(result, action);
   const method = result.functionName?.split("(")[0];
   const address = result.parameters.find(
-    (p) => p.name === (method === "approve" ? "spender" : "to"),
+    (p) => p.name === (method === "approve" ? "spender" : "recipient"),
   )?.value;
   const amount = result.parameters.find((p) =>
-    /^amount(?:\s|$)/.test(p.name),
+    /^amount(?:Raw|\s|$)/.test(p.name),
   )?.value;
   const unlimited = amount === ((1n << 256n) - 1n).toString();
   const readable =
