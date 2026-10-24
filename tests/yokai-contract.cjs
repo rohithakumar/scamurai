@@ -328,3 +328,42 @@ test("status snapshots and unavailable evidence remain honest, and HTTP timeouts
     global.fetch = original;
   }
 });
+
+test("temporary gateway errors retry reads but never replay investigation creation", async () => {
+  const saved = global.fetch;
+  const fixture = createDemoInvestigation("responsive", input);
+  const live = { ...fixture, id: "retry-live", demo: false };
+  live.result.captures.forEach((c) => (c.screenshot = null));
+  let calls = 0;
+  try {
+    global.fetch = async () =>
+      ++calls === 1 ? new Response("", { status: 502 }) : Response.json(live);
+    assert.equal(
+      (await api.getInvestigation("retry-live", new AbortController().signal))
+        .id,
+      "retry-live",
+    );
+    assert.equal(calls, 2);
+    calls = 0;
+    global.fetch = async () => {
+      calls++;
+      return new Response("", { status: 502 });
+    };
+    await assert.rejects(
+      () => api.startInvestigation(input, new AbortController().signal),
+      /temporarily unavailable/,
+    );
+    assert.equal(calls, 1);
+    calls = 0;
+    const controller = new AbortController();
+    const pending = api.getInvestigation("retry-live", controller.signal);
+    setTimeout(() => controller.abort(), 10);
+    await assert.rejects(
+      () => pending,
+      (e) => e.name === "AbortError",
+    );
+    assert.equal(calls, 1);
+  } finally {
+    global.fetch = saved;
+  }
+});

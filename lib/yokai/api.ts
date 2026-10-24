@@ -279,13 +279,41 @@ async function request(
     );
   const timeout = AbortSignal.timeout(config.timeout);
   try {
-    const response = await fetch(apiRequestUrl(path), {
+    const requestSignal = AbortSignal.any([signal, timeout]);
+    const options: RequestInit = {
       method,
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.any([signal, timeout]),
+      signal: requestSignal,
       cache: "no-store",
-    });
+    };
+    let response = await fetch(apiRequestUrl(path), options);
+    // Only repeat reads: a failed POST may already have created a job.
+    for (
+      let attempt = 0;
+      method === "GET" &&
+      attempt < 2 &&
+      [502, 503, 504].includes(response.status);
+      attempt++
+    ) {
+      await response.body?.cancel();
+      await new Promise<void>((resolve, reject) => {
+        requestSignal.throwIfAborted();
+        const abort = () => {
+          clearTimeout(timer);
+          reject(requestSignal.reason);
+        };
+        const timer = setTimeout(
+          () => {
+            requestSignal.removeEventListener("abort", abort);
+            resolve();
+          },
+          500 * (attempt + 1),
+        );
+        requestSignal.addEventListener("abort", abort, { once: true });
+      });
+      response = await fetch(apiRequestUrl(path), options);
+    }
     if (!response.ok)
       throw new YokaiApiError(
         response.status === 403
@@ -294,7 +322,9 @@ async function request(
             ? "This investigation or capability is unavailable on the connected service."
             : response.status === 422
               ? "The service rejected these target or profile settings. Review the investigation inputs."
-              : `The investigation service returned ${response.status}. Retry when it is available.`,
+              : [502, 503, 504].includes(response.status)
+                ? "The backend connection was interrupted or is temporarily unavailable. Retry to reconnect. New investigations are not automatically resubmitted."
+                : `The investigation service returned ${response.status}. Retry when it is available.`,
       );
     return await response.json();
   } catch (error) {
