@@ -40,7 +40,7 @@ export function TransactionSummary({
           {address && isAddress(address) && (
             <p>
               {method === "approve"
-                ? "Address getting spending access"
+                ? "Address named in this permission"
                 : "Tokens would go to"}
               : <code>{shortAddress(address)}</code>
             </p>

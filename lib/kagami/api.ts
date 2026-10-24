@@ -42,7 +42,9 @@ async function request(path: string, signal: AbortSignal, body?: unknown) {
           ? "This KAGAMI capability is not available on the connected service."
           : response.status === 422
             ? "The service rejected these wallet, network, or transaction inputs."
-            : `KAGAMI service returned ${response.status}. Please retry.`,
+            : response.status === 503
+              ? "We could not reach the blockchain data provider. Try again shortly. No check was completed."
+              : `KAGAMI service returned ${response.status}. Please retry.`,
       );
     return await response.json();
   } catch (e) {
